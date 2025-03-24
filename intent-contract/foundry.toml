@@ -1,6 +1,10 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["lib"]
+libs = ["lib", "node_modules"]
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+remappings = [
+    "@hyperlane-xyz/core/=node_modules/@hyperlane-xyz/core/",
+    "@openzeppelin-contracts/contract/=lib/openzeppelin/",
+    "forge-std/=lib/forge-std/src/"
+]
