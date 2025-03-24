@@ -7,7 +7,7 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 contract MockERC20 is ERC20 {
 
     address public owner;
-    uint256 public constant MAX_TOTAL_SUPPLY = 10_000;
+    uint256 public constant MAX_TOTAL_SUPPLY = 10_000_000_000;
 
     constructor() ERC20("MockERC20", "MC20") {
         owner = msg.sender;

@@ -1,0 +1,7 @@
+{
+  "name": "intent-contract",
+  "packageManager": "yarn@4.7.0",
+  "dependencies": {
+    "@hyperlane-xyz/core": "^6.0.1"
+  }
+}

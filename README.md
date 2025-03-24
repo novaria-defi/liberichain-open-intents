@@ -1,1 +1,1 @@
-# intent-bot
+# liberichain-open-intents

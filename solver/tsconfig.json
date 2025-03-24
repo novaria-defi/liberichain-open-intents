@@ -110,6 +110,6 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  "include": ["src/**/*", "settlement.ts", "solver.ts", "transaction.ts"],
+  "include": ["solver/src/**/*", "solver/src/settlement.ts", "solver/src/solver.ts", "solver/src/transaction.ts"],
   "exclude": ["node_modules"]
 }

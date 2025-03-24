@@ -4,13 +4,13 @@ pragma solidity ^0.8.20;
 import "@hyperlane-xyz/core/contracts/interfaces/IMessageRecipient.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 contract IntentSettlement is IMessageRecipient {
     address public mailbox;
     mapping(bytes32 => Intent) public intents;
     mapping(bytes32 => bool) public fulfilledIntents;
     
     error InvalidOriginChain(uint32 origin);
+    error InvalidDestinationChain(uint32 destination);
     error IntentAlreadyFulfilled(bytes32 intentId);
     error IntentExpired(bytes32 intentId);
     error InsufficientTokenReceived(address user, uint256 balance, uint256 minReceived);
@@ -22,8 +22,8 @@ contract IntentSettlement is IMessageRecipient {
         address user;
         address token;
         uint256 amount;
-        uint256 sourceChainId;
-        uint256 destinationChainId;
+        uint32 sourceChainId;     // Arbitrum Sepolia or Liberichain
+        uint32 destinationChainId; // The opposite chain
         uint256 deadline;
         uint256 minReceived;
     }
@@ -42,12 +42,22 @@ contract IntentSettlement is IMessageRecipient {
         }
         
         // Verifikasi asal jaringan (Arbitrum Sepolia atau LiberiChain)
-        if (_origin != 1614990) {
-            revert InvalidOriginChain(_origin); // ID chain LiberiChain
-        }
+        Intent memory intent;
+        bytes32 intentId;
+        
+        (intent, intentId) = abi.decode(_message, (Intent, bytes32));
 
-        // Mendekode intent dan ID intent
-        (Intent memory intent, bytes32 intentId) = abi.decode(_message, (Intent, bytes32));
+        if (_origin == 421614) {  // Jika berasal dari Arbitrum Sepolia
+            if (intent.destinationChainId != 1614990) { // Pastikan tujuan ke Liberichain
+                revert InvalidDestinationChain(intent.destinationChainId);
+            }
+        } else if (_origin == 1614990) {  // Jika berasal dari Liberichain
+            if (intent.destinationChainId != 421614) { // Pastikan tujuan ke Arbitrum Sepolia
+                revert InvalidDestinationChain(intent.destinationChainId);
+            }
+        } else {
+            revert InvalidOriginChain(_origin); // Validasi origin chain yang tidak valid
+        }
 
         // Pastikan intent belum dipenuhi
         if (fulfilledIntents[intentId]) {
@@ -80,6 +90,7 @@ contract IntentSettlement is IMessageRecipient {
 
         fulfilledIntents[intentId] = true;
 
+        // Emit event untuk menandakan intent telah dipenuhi
         emit IntentFulfilled(intentId, solver);
     }
 }
