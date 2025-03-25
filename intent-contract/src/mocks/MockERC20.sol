@@ -11,10 +11,10 @@ contract MockERC20 is ERC20 {
 
     constructor() ERC20("MockERC20", "MC20") {
         owner = msg.sender;
+        _mint(owner, MAX_TOTAL_SUPPLY);
     }
 
     function mint(address to, uint256 amount) public {
         _mint(to, amount);
     }
-
 }

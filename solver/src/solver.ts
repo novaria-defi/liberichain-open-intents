@@ -1,100 +1,192 @@
-import { ethers } from "ethers";
-import * as dotenv from "dotenv";
-import * as fs from "fs";
-
-dotenv.config();
+import { ethers } from 'ethers';
+import { createPublicClient, http, Address } from 'viem';
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 // Load environment variables
-const sepoliaRpc = process.env.Arbitrum_SEPOLIA_RPC;
-const liberichainRpc = process.env.LIBERICHAIN_RPC;
-const userPrivateKey = process.env.SOLVER_PRIVATE_KEY;
-const intentSenderAddress = process.env.INTENT_SENDER_ADDRESS;
-const liberichainTokenAddress = process.env.MTK_TOKEN_ADDRESS;
+dotenv.config();
 
-if (!sepoliaRpc || !liberichainRpc || !userPrivateKey || !intentSenderAddress || !liberichainTokenAddress) {
-    throw new Error("Missing required environment variables.");
+// Interface untuk Intent
+interface Intent {
+  user: string;
+  token: string;
+  amount: bigint;
+  sourceChainId: number;
+  destinationChainId: number;
+  deadline: bigint;
+  minReceived: bigint;
+  intentId?: string;
 }
 
-// Setup providers and wallets
-const sepoliaProvider = new ethers.JsonRpcProvider(sepoliaRpc);
-const liberichainProvider = new ethers.JsonRpcProvider(liberichainRpc);
-const wallet = new ethers.Wallet(userPrivateKey);
-const sepoliaWallet = wallet.connect(sepoliaProvider);
-const liberichainWallet = wallet.connect(liberichainProvider);
+class IntentBotSolver {
+  private sourceChainProvider: ethers.Provider;
+  private destChainProvider: ethers.Provider;
+  private sourceChainClient: any;
+  private destChainClient: any;
+  private intentSenderContract: ethers.Contract;
+  private intentSettlementContract: ethers.Contract;
+  private processedIntents: Set<string> = new Set();
+  private hasActiveListener: boolean = false;
 
-// Load ABI for IntentSender contract
-const intentSenderABI = JSON.parse(fs.readFileSync("contract/IntentSender.json", "utf8")).abi;
-const intentSenderContract = new ethers.Contract(intentSenderAddress, intentSenderABI, sepoliaWallet);
+  constructor(
+    sourceRpcUrl: string, 
+    destRpcUrl: string,
+    intentSenderAddress: Address,
+    intentSettlementAddress: Address
+  ) {
+    // Inisialisasi provider
+    this.sourceChainProvider = new ethers.JsonRpcProvider(sourceRpcUrl);
+    this.destChainProvider = new ethers.JsonRpcProvider(destRpcUrl);
 
-// Load ERC20 ABI
-const erc20ABI = [
-    "function transfer(address to, uint256 amount) external returns (bool)",
-    "function balanceOf(address account) external view returns (uint256)"
-];
+    // Inisialisasi viem clients
+    this.sourceChainClient = createPublicClient({
+      transport: http(sourceRpcUrl)
+    });
 
-const tokenContract = new ethers.Contract(liberichainTokenAddress, erc20ABI, liberichainWallet);
+    this.destChainClient = createPublicClient({
+      transport: http(destRpcUrl)
+    });
 
-// Function to send tokens on LiberiChain
-async function sendTokens(user: string, amount: bigint) {
-    try {
-        const balance = await tokenContract.balanceOf(liberichainWallet.address);
-        if (balance < amount) {
-            console.error("Insufficient balance in solver wallet on LiberiChain.");
-            return;
-        }
+    // Baca ABI dari file JSON
+    const intentSenderABI = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../contract/IntentSender.json"), "utf-8")
+    ).abi;
 
-        console.log(`Sending ${amount} tokens to ${user} on LiberiChain...`);
-        const tx = await tokenContract.transfer(user, amount);
-        await tx.wait();
-        console.log(`Tokens sent successfully: ${tx.hash}`);
-    } catch (error) {
-        console.error("Error sending tokens:", error);
+    const intentSettlementABI = JSON.parse(
+      fs.readFileSync(path.resolve(__dirname, "../contract/IntentSettlement.json"), "utf-8")
+    ).abi;
+
+    // Siapkan signer untuk transaksi
+    const wallet = new ethers.Wallet(
+      process.env.SOLVER_PRIVATE_KEY!, 
+      this.destChainProvider
+    );
+
+    // Inisialisasi kontrak-kontrak
+    this.intentSenderContract = new ethers.Contract(
+      intentSenderAddress, 
+      intentSenderABI, 
+      this.sourceChainProvider
+    );
+
+    this.intentSettlementContract = new ethers.Contract(
+      intentSettlementAddress, 
+      intentSettlementABI, 
+      wallet
+    );
+  }
+
+  // Metode untuk melakukan polling terhadap event IntentSubmitted
+  async startPolling(pollInterval: number = 5000) {
+    console.log('Starting Intent Bot Solver...');
+    
+    // Cegah listener ganda
+    if (this.hasActiveListener) {
+      console.log('Listener already active');
+      return;
     }
+
+    let transactionsFound = false;
+
+    // Listen to IntentSubmitted event
+    const listener = this.intentSenderContract.on('IntentSubmitted', async (intentId, intent, event) => {
+      transactionsFound = true;
+      console.log('New Intent Received:', intentId);
+      
+      // Hindari memproses intent yang sama berulang kali
+      if (this.processedIntents.has(intentId)) {
+        console.log('Intent already processed:', intentId);
+        return;
+      }
+
+      try {
+        await this.processIntentRequest({
+          user: intent.user,
+          token: intent.token,
+          amount: intent.amount,
+          sourceChainId: intent.sourceChainId,
+          destinationChainId: intent.destinationChainId,
+          deadline: intent.deadline,
+          minReceived: intent.minReceived,
+          intentId: intentId
+        });
+
+        // Tandai intent sebagai sudah diproses
+        this.processedIntents.add(intentId);
+      } catch (error) {
+        console.error('Error processing intent:', error);
+      }
+    });
+
+    // Set flag listener aktif
+    this.hasActiveListener = true;
+
+    // Tambahkan log untuk transaksi yang tidak ditemukan
+    setTimeout(() => {
+      if (!transactionsFound) {
+        console.log('No incoming transactions');
+      }
+      transactionsFound = false;
+    }, pollInterval);
+
+    // Prevent the process from exiting
+    await new Promise(() => {});
+  }
+
+  // Metode untuk memproses intent request
+  private async processIntentRequest(intent: Intent) {
+    try {
+      console.log('Processing Intent:', intent);
+
+      // Siapkan signer untuk transaksi
+      const wallet = new ethers.Wallet(
+        process.env.SOLVER_PRIVATE_KEY!, 
+        this.destChainProvider
+      );
+
+      // Transfer token di chain tujuan
+      const tokenContract = new ethers.Contract(
+        intent.token, 
+        ['function transfer(address to, uint256 amount) public'],
+        wallet
+      );
+
+      const transferTx = await tokenContract.transfer(
+        intent.user, 
+        intent.amount
+      );
+      await transferTx.wait();
+
+      // Lakukan settlement di kontrak tujuan
+      const settlementTx = await this.intentSettlementContract.executeSettlement(
+        intent.user,
+        intent.amount,
+        intent.intentId
+      );
+      await settlementTx.wait();
+
+      console.log(`Intent processed for ${intent.user}`);
+    } catch (error) {
+      console.error('Error processing intent request:', error);
+      throw error;
+    }
+  }
 }
 
-// Function to listen for intents with polling
-async function listenForIntents() {
-    console.log("Bot solver is running and listening for intents...");
+// Contoh penggunaan
+async function main() {
+  const solver = new IntentBotSolver(
+    process.env.SOURCE_CHAIN_RPC_URL!,
+    process.env.DEST_CHAIN_RPC_URL!,
+    process.env.INTENT_SENDER_CONTRACT_ADDRESS! as Address,
+    process.env.INTENT_SETTLEMENT_CONTRACT_ADDRESS! as Address
+  );
 
-    let lastBlock = await sepoliaProvider.getBlockNumber();
-
-    setInterval(async () => {
-        try {
-            const latestBlock = await sepoliaProvider.getBlockNumber();
-            if (latestBlock > lastBlock) {
-                const events = await sepoliaProvider.getLogs({
-                    address: intentSenderAddress,
-                    fromBlock: lastBlock + 1,
-                    toBlock: latestBlock,
-                    topics: [ethers.id("IntentSubmitted(uint256,tuple)")],
-                });
-
-                for (const event of events) {
-                    const decodedEvent = intentSenderContract.interface.parseLog(event);
-                    if (!decodedEvent) {
-                        console.error("Failed to decode event log.");
-                        return;
-                    }
-                    const intent = decodedEvent.args[1]; // Sekarang aman                    
-
-                    console.log("New intent detected:", intent);
-
-                    if (intent.destinationChainId !== BigInt(1614990)) {
-                        console.log("Intent is not for LiberiChain, ignoring...");
-                        continue;
-                    }
-
-                    // Execute token transfer on LiberiChain
-                    await sendTokens(intent.user, intent.minReceived);
-                }
-
-                lastBlock = latestBlock;
-            }
-        } catch (error) {
-            console.error("Error fetching events:", error);
-        }
-    }, 5000); // Polling setiap 5 detik
+  solver.startPolling();
 }
 
-// Start bot solver
-listenForIntents();
+// Jalankan bot
+main().catch(console.error);
+
+export default IntentBotSolver;

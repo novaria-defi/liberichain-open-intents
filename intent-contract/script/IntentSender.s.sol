@@ -6,9 +6,8 @@ import {IntentSender} from "../src/IntentSender.sol";
 
 contract IntentSenderScript is Script {
     IntentSender public intentSender;
-    address mailboxAddress = 0x1Db8fD89970B6FcBbbC50658b8DA2C272DfDcB57;
-    address intentSettlement = 0x54059294b42a9D438C84B8844916d403e982dcF6;
-    uint256 chainId = 1614990;
+    address mailboxAddress = 0xA88206Cf611f4c48EaE7234Fa2A5f7476F320b32;
+    address intentSettlement = 0xb992451a28ef4b9C920a98c7f10aAF0f799B79f2;
 
     function setUp() public {}
 
@@ -16,7 +15,7 @@ contract IntentSenderScript is Script {
         // Mulai siaran transaksi
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
-        intentSender = new IntentSender(mailboxAddress, intentSettlement, chainId);
+        intentSender = new IntentSender(mailboxAddress, intentSettlement);
 
         console.log("IntentSender deployed to:", address(intentSender));
 
