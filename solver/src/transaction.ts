@@ -9,21 +9,17 @@ dotenv.config();
 const MOCK_TOKEN_ADDRESS = "0x4eAC1d777438602D869968371e2fFD6e72F17228";
 
 async function submitIntent() {
-  // Setup provider and wallet
   const provider = new ethers.JsonRpcProvider(process.env.SOURCE_CHAIN_RPC_URL);
   const wallet = new ethers.Wallet(process.env.USER_PRIVATE_KEY!, provider);
 
-  // Load IntentSender contract ABI
   const intentSenderABI = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, "../contract/IntentSender.json"), "utf-8")
   ).abi;
 
-  // Load MockERC20 contract ABI
   const mockTokenABI = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, "../contract/MockERC20.json"), "utf-8")
   ).abi;
 
-  // Create contract instances
   const intentSender = new ethers.Contract(
     process.env.INTENT_SENDER_CONTRACT_ADDRESS!,
     intentSenderABI,
@@ -36,18 +32,16 @@ async function submitIntent() {
     wallet
   );
 
-  // Prepare intent parameters
   const token = MOCK_TOKEN_ADDRESS;
-  const amount = ethers.parseEther("10"); // 10 tokens
-  const originChain = 421614; // Arbitrum Sepolia
-  const destinationChainId = 1614990; // Liberichain
+  const amount = ethers.parseEther("10"); // 18 decimals
+  const originChain = 421614;
+  const destinationChainId = 1614990;
   const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
   const minReceived = ethers.parseEther("9.5"); // Minimum 9.5 tokens to receive
 
   try {
     console.log("Approving IntentSender to spend tokens...");
 
-    // Approve the contract to spend the tokens
     const approveTx = await mockToken.approve(intentSender.target, amount);
     await approveTx.wait();
     console.log("Token approved successfully!");
@@ -91,7 +85,6 @@ async function submitIntent() {
         minReceived: decoded?.args.minReceived?.toString(),
       });
 
-      // Check if the token is locked in contract
       const contractBalance = await mockToken.balanceOf(intentSender.target);
       console.log(`Contract now holds ${ethers.formatEther(contractBalance)} MOCK tokens`);
     }

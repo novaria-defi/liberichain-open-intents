@@ -5,7 +5,7 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract MockERC20OnLiberichain is ERC20 {
     address public owner;
-    uint256 public constant MAX_TOTAL_SUPPLY = 10_000_000_000 * 10**18; // Perbaikan di sini
+    uint256 public constant MAX_TOTAL_SUPPLY = 10_000_000_000 * 10**18;
 
     constructor() ERC20("Meme Token On Liberichain", "MTOL") {
         owner = msg.sender;

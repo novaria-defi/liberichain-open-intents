@@ -42,12 +42,11 @@ contract IntentSender {
         if (_deadline <= block.timestamp) revert IntentExpired();
         if (_minReceived == 0) revert InvalidMinReceived();
         
-        // Transfer token dari user ke kontrak ini
         if (!IERC20(_token).transferFrom(msg.sender, address(this), _amount)) {
             revert TransferFailed();
         }
 
-        // Buat intentId
+        // IntentId
         bytes32 intentId = keccak256(
             abi.encode(
                 msg.sender,
@@ -61,7 +60,6 @@ contract IntentSender {
             )
         );
 
-        // Simpan jumlah token yang terlock
         lockedTokens[intentId] = _amount;
 
         emit IntentSubmitted(

@@ -29,7 +29,6 @@ class CrossChainIntentSolver {
   private currentProcessingIntent: string | null = null;
   private processingLock: boolean = false;
 
-  // Chain IDs
   private readonly ARBITRUM_SEPOLIA = 421614;
   private readonly LIBERICHAIN = 1614990;
 
@@ -39,20 +38,16 @@ class CrossChainIntentSolver {
   };
 
   constructor() {
-    // Setup providers
     this.sourceProvider = new ethers.JsonRpcProvider(process.env.SOURCE_CHAIN_RPC_URL!);
     this.destProvider = new ethers.JsonRpcProvider(process.env.DEST_CHAIN_RPC_URL!);
 
-    // Setup wallets
     this.sourceWallet = new ethers.Wallet(process.env.SOLVER_PRIVATE_KEY!, this.sourceProvider);
     this.destWallet = new ethers.Wallet(process.env.SOLVER_PRIVATE_KEY!, this.destProvider);
 
-    // Load IntentSender ABI
     const intentSenderABI = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "../contract/IntentSender.json"), "utf-8")
     ).abi;
 
-    // Create contract instance
     this.intentSenderContract = new ethers.Contract(
       process.env.INTENT_SENDER_CONTRACT_ADDRESS!,
       intentSenderABI,
@@ -218,7 +213,7 @@ class CrossChainIntentSolver {
     console.log("✅ Transfer completed!");
     console.log(`📝 Tx hash: ${tx.hash}`);
     console.log(`⛽ Gas used: ${receipt?.gasUsed.toString()}`);
-    console.log(`🔗 Explorer: https://liberichain.blockscout.com/tx/${tx.hash}`);
+    console.log(`🔗 Hash transaction: ${tx.hash}`);
   }
 }
 
