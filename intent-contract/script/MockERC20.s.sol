@@ -18,5 +18,3 @@ contract MockERC20Script is Script {
         vm.stopBroadcast();
     }
 }
-
-// forge script MemeTokenScript --rpc-url https://arb-sepolia.g.alchemy.com/v2/czzNRTsjnAUcR9rlDQn3zCjhkd-IT8mo --broadcast --verify --etherscan-api-key EG19M428F61ZVNVJFFEQDNDRAKBGAF45RP

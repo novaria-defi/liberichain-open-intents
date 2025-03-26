@@ -19,4 +19,3 @@ contract MockERC20OnLiberichainScript is Script {
     }
 }
 
-// forge script MockERC20OnLiberichainScript --rpc-url http://127.0.0.1:8547

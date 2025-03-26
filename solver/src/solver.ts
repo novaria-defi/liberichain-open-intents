@@ -26,6 +26,8 @@ class CrossChainIntentSolver {
   private processedIntents: Set<string> = new Set();
   private scanInterval: NodeJS.Timeout | null = null;
   private lastScannedBlock: number = 0;
+  private currentProcessingIntent: string | null = null;
+  private processingLock: boolean = false;
 
   // Chain IDs
   private readonly ARBITRUM_SEPOLIA = 421614;
@@ -69,13 +71,22 @@ class CrossChainIntentSolver {
     console.log(`🔍 Starting scan from block ${this.lastScannedBlock}`);
 
     // Start polling
+    this.startPolling();
+  }
+
+  private startPolling() {
     this.scanInterval = setInterval(async () => {
+      if (this.processingLock) {
+        console.log("⏸️ Solver is processing an intent, skipping scan...");
+        return;
+      }
+
       try {
         await this.pollNewBlocks();
       } catch (error) {
         console.error("⚠️ Error during polling:", error);
       }
-    }, 2000); // 2 seconds interval
+    }, 2000);
   }
 
   stop() {
@@ -112,15 +123,12 @@ class CrossChainIntentSolver {
 
       const intent = event.args as unknown as Intent;
       
-      // Validate chain IDs
+      // Validate chain IDs and check processing status
       if (intent.sourceChainId !== BigInt(this.ARBITRUM_SEPOLIA) || 
-          intent.destinationChainId !== BigInt(this.LIBERICHAIN)) {
-        console.log(`⏭️ Skipping intent for other chains (src: ${intent.sourceChainId}, dest: ${intent.destinationChainId})`);
-        continue;
-      }
-
-      if (this.processedIntents.has(intent.intentId)) {
-        console.log(`⏭️ Intent ${intent.intentId} already processed`);
+          intent.destinationChainId !== BigInt(this.LIBERICHAIN) ||
+          this.processedIntents.has(intent.intentId) ||
+          this.currentProcessingIntent === intent.intentId) {
+        console.log(`⏭️ Skipping intent ${intent.intentId}`);
         continue;
       }
 
@@ -131,69 +139,86 @@ class CrossChainIntentSolver {
       console.log(`⏱️ Deadline: ${new Date(Number(intent.deadline) * 1000)}`);
       console.log(`📝 Tx hash: ${event.transactionHash}`);
 
-      await this.processCrossChainIntent(intent);
-      this.processedIntents.add(intent.intentId);
+      // Lock processing
+      this.currentProcessingIntent = intent.intentId;
+      this.processingLock = true;
+
+      try {
+        await this.processCrossChainIntent(intent);
+        this.processedIntents.add(intent.intentId);
+      } catch (error) {
+        console.error("⚠️ Error processing intent:", error);
+        // Remove from processed if failed
+        this.processedIntents.delete(intent.intentId);
+      } finally {
+        // Release lock
+        this.currentProcessingIntent = null;
+        this.processingLock = false;
+        console.log("🔄 Resuming scanning...");
+      }
     }
   }
 
   private async processCrossChainIntent(intent: Intent) {
-    try {
-      // Check deadline
-      if (BigInt(Math.floor(Date.now() / 1000)) > intent.deadline) {
-        console.log("❌ Intent expired");
-        return;
-      }
-
-      // Get corresponding token address on destination chain
-      const destToken = this.TOKEN_MAPPING[intent.token];
-      if (!destToken) {
-        console.log(`❌ No token mapping found for ${intent.token}`);
-        return;
-      }
-
-      // Create token contract on destination chain
-      const tokenAbi = [
-        "function balanceOf(address) view returns (uint)",
-        "function transfer(address, uint) returns (bool)",
-        "function decimals() view returns (uint8)",
-        "function symbol() view returns (string)"
-      ];
-      
-      const destTokenContract = new ethers.Contract(
-        destToken,
-        tokenAbi,
-        this.destWallet
-      );
-
-      // Check solver balance on destination chain
-      const [symbol, decimals, balance] = await Promise.all([
-        destTokenContract.symbol(),
-        destTokenContract.decimals(),
-        destTokenContract.balanceOf(this.destWallet.address)
-      ]);
-
-      console.log(`💰 Solver balance on Liberichain: ${ethers.formatUnits(balance, decimals)} ${symbol}`);
-
-      if (balance < intent.amount) {
-        console.log("❌ Insufficient balance on destination chain");
-        return;
-      }
-
-      // Execute cross-chain transfer
-      console.log(`🔄 Sending ${ethers.formatUnits(intent.amount, decimals)} ${symbol} to ${intent.user} on Liberichain...`);
-      
-      const tx = await destTokenContract.transfer(intent.user, intent.amount);
-      console.log(`📤 Transaction sent: ${tx.hash}`);
-
-      const receipt = await tx.wait();
-      console.log("✅ Transfer completed!");
-      console.log(`📝 Tx hash: ${tx.hash}`);
-      console.log(`⛽ Gas used: ${receipt?.gasUsed.toString()}`);
-      console.log(`🔗 Explorer: https://liberichain.blockscout.com/tx/${tx.hash}`);
-
-    } catch (error) {
-      console.error("⚠️ Error processing cross-chain intent:", error);
+    // Double check processing status
+    if (this.processingLock && this.currentProcessingIntent !== intent.intentId) {
+      console.log("⏭️ Another intent is being processed, skipping...");
+      return;
     }
+
+    // Check deadline
+    const currentTime = BigInt(Math.floor(Date.now() / 1000));
+    if (currentTime > intent.deadline) {
+      console.log("❌ Intent expired");
+      return;
+    }
+
+    // Get corresponding token address on destination chain
+    const destToken = this.TOKEN_MAPPING[intent.token];
+    if (!destToken) {
+      console.log(`❌ No token mapping found for ${intent.token}`);
+      return;
+    }
+
+    // Create token contract on destination chain
+    const tokenAbi = [
+      "function balanceOf(address) view returns (uint)",
+      "function transfer(address, uint) returns (bool)",
+      "function decimals() view returns (uint8)",
+      "function symbol() view returns (string)"
+    ];
+    
+    const destTokenContract = new ethers.Contract(
+      destToken,
+      tokenAbi,
+      this.destWallet
+    );
+
+    // Check solver balance on destination chain
+    const [symbol, decimals, balance] = await Promise.all([
+      destTokenContract.symbol(),
+      destTokenContract.decimals(),
+      destTokenContract.balanceOf(this.destWallet.address)
+    ]);
+
+    console.log(`💰 Solver balance on Liberichain: ${ethers.formatUnits(balance, decimals)} ${symbol}`);
+
+    if (balance < intent.amount) {
+      console.log("❌ Insufficient balance on destination chain");
+      return;
+    }
+
+    // Execute cross-chain transfer
+    console.log(`🔄 Sending ${ethers.formatUnits(intent.amount, decimals)} ${symbol} to ${intent.user} on Liberichain...`);
+    
+    const tx = await destTokenContract.transfer(intent.user, intent.amount);
+    console.log(`📤 Transaction sent: ${tx.hash}`);
+
+    const receipt = await tx.wait();
+    console.log("✅ Transfer completed!");
+    console.log(`📝 Tx hash: ${tx.hash}`);
+    console.log(`⛽ Gas used: ${receipt?.gasUsed.toString()}`);
+    console.log(`🔗 Explorer: https://liberichain.blockscout.com/tx/${tx.hash}`);
   }
 }
 
