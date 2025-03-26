@@ -1,96 +1,160 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@hyperlane-xyz/core/contracts/interfaces/IMessageRecipient.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract IntentSettlement is IMessageRecipient {
-    address public mailbox;
+contract IntentSettlement is Ownable {
+    // Struktur Intent yang diperluas
+    struct Intent {
+        address user;           // Pengguna yang membuat intent
+        address intentSender;   // Alamat kontrak/wallet yang mengirim intent
+        address token;          // Token yang di-transfer
+        uint256 amount;         // Jumlah token
+        uint256 sourceChainId;  // Chain asal
+        uint256 destinationChainId; // Chain tujuan
+        uint256 deadline;       // Batas waktu intent
+        uint256 minReceived;    // Jumlah minimal yang harus diterima
+        bytes32 intentId;       // ID unik intent
+    }
+
+    // Mapping untuk melacak intent yang sudah diproses
+    mapping(bytes32 => bool) public processedIntents;
     mapping(bytes32 => Intent) public intents;
-    mapping(bytes32 => bool) public fulfilledIntents;
-    
-    error InvalidOriginChain(uint32 origin);
-    error InvalidDestinationChain(uint32 destination);
-    error IntentAlreadyFulfilled(bytes32 intentId);
+
+    // Event untuk melacak status intent
+    event IntentSubmitted(bytes32 indexed intentId, Intent intent);
+    event IntentProcessed(bytes32 indexed intentId, address solver);
+    event IntentCancelled(bytes32 indexed intentId);
+
+    // Custom Errors
+    error InvalidAmount(uint256 amount);
+    error InvalidDeadline(uint256 deadline);
+    error IntentAlreadyProcessed(bytes32 intentId);
     error IntentExpired(bytes32 intentId);
     error InsufficientTokenReceived(address user, uint256 balance, uint256 minReceived);
-    error OnlyMailboxCanCall(address caller);
 
-    event IntentFulfilled(bytes32 intentId, address solver);
+    /**
+     * @notice Submit intent untuk cross-chain transfer
+     * @param _user Alamat pengguna akhir
+     * @param _token Alamat token
+     * @param _amount Jumlah token
+     * @param _sourceChainId Chain asal
+     * @param _destinationChainId Chain tujuan
+     * @param _deadline Batas waktu intent
+     * @param _minReceived Jumlah minimal token yang diterima
+     * @return intentId ID unik untuk intent
+     */
+    function submitSettlement(
+        address _user,
+        address _token,
+        uint256 _amount,
+        uint256 _sourceChainId,
+        uint256 _destinationChainId,
+        uint256 _deadline,
+        uint256 _minReceived
+    ) external returns (bytes32 intentId) {
+        // Validasi input
+        if (_amount == 0) revert InvalidAmount(_amount);
+        if (_deadline <= block.timestamp) revert InvalidDeadline(_deadline);
 
-    struct Intent {
-        address user;
-        address token;
-        uint256 amount;
-        uint32 sourceChainId;     // Arbitrum Sepolia or Liberichain
-        uint32 destinationChainId; // The opposite chain
-        uint256 deadline;
-        uint256 minReceived;
-    }
+        // Generate intentId
+        intentId = keccak256(abi.encodePacked(
+            _user, 
+            _token, 
+            _amount, 
+            _sourceChainId, 
+            _destinationChainId, 
+            _deadline,
+            block.timestamp
+        ));
 
-    constructor(address _mailbox) {
-        mailbox = _mailbox; // Simpan address mailbox
-    }
+        // Buat intent
+        Intent memory intent = Intent({
+            user: _user,
+            intentSender: msg.sender,
+            token: _token,
+            amount: _amount,
+            sourceChainId: _sourceChainId,
+            destinationChainId: _destinationChainId,
+            deadline: _deadline,
+            minReceived: _minReceived,
+            intentId: intentId
+        });
 
-    function handle(
-        uint32 _origin,
-        bytes32 _sender,
-        bytes calldata _message
-    ) external payable {
-        if (msg.sender != mailbox) {
-            revert OnlyMailboxCanCall(msg.sender);
-        }
-        
-        // Verifikasi asal jaringan (Arbitrum Sepolia atau LiberiChain)
-        Intent memory intent;
-        bytes32 intentId;
-        
-        (intent, intentId) = abi.decode(_message, (Intent, bytes32));
-
-        if (_origin == 421614) {  // Jika berasal dari Arbitrum Sepolia
-            if (intent.destinationChainId != 1614990) { // Pastikan tujuan ke Liberichain
-                revert InvalidDestinationChain(intent.destinationChainId);
-            }
-        } else if (_origin == 1614990) {  // Jika berasal dari Liberichain
-            if (intent.destinationChainId != 421614) { // Pastikan tujuan ke Arbitrum Sepolia
-                revert InvalidDestinationChain(intent.destinationChainId);
-            }
-        } else {
-            revert InvalidOriginChain(_origin); // Validasi origin chain yang tidak valid
-        }
-
-        // Pastikan intent belum dipenuhi
-        if (fulfilledIntents[intentId]) {
-            revert IntentAlreadyFulfilled(intentId);
-        }
-
-        // Menyimpan intent untuk pemrosesan lebih lanjut
+        // Simpan intent
         intents[intentId] = intent;
+
+        // Emit event
+        emit IntentSubmitted(intentId, intent);
+
+        return intentId;
     }
 
-    function fulfillIntent(bytes32 intentId, address solver) external {
-        Intent memory intent = intents[intentId];
+    /**
+     * @notice Proses intent setelah cross-chain transfer
+     * @param intentId ID intent yang akan diproses
+     */
+    function processIntent(bytes32 intentId) external {
+        // Ambil intent dari storage
+        Intent storage intent = intents[intentId];
 
-        // Cek apakah intent sudah kadaluarsa
-        if (intent.deadline <= block.timestamp) {
+        // Validasi intent belum diproses
+        if (processedIntents[intentId]) {
+            revert IntentAlreadyProcessed(intentId);
+        }
+
+        // Validasi deadline
+        if (block.timestamp > intent.deadline) {
             revert IntentExpired(intentId);
         }
 
-        // Pastikan intent belum dipenuhi
-        if (fulfilledIntents[intentId]) {
-            revert IntentAlreadyFulfilled(intentId);
-        }
-
+        // Validasi token diterima minimal sesuai yang diharapkan
         IERC20 token = IERC20(intent.token);
-
-        // Cek apakah penerima memiliki token yang cukup
         if (token.balanceOf(intent.user) < intent.minReceived) {
-            revert InsufficientTokenReceived(intent.user, token.balanceOf(intent.user), intent.minReceived);
+            revert InsufficientTokenReceived(
+                intent.user, 
+                token.balanceOf(intent.user), 
+                intent.minReceived
+            );
         }
 
-        fulfilledIntents[intentId] = true;
+        // Tandai intent sebagai diproses
+        processedIntents[intentId] = true;
 
-        // Emit event untuk menandakan intent telah dipenuhi
-        emit IntentFulfilled(intentId, solver);
+        // Emit event
+        emit IntentProcessed(intentId, msg.sender);
+    }
+
+    /**
+     * @notice Batalkan intent jika tidak dapat diproses
+     * @param intentId ID intent yang akan dibatalkan
+     */
+    function cancelIntent(bytes32 intentId) external {
+        // Ambil intent dari storage
+        Intent storage intent = intents[intentId];
+
+        // Validasi bahwa pemanggil adalah intent sender asli
+        require(msg.sender == intent.intentSender, "Only intent sender can cancel");
+
+        // Validasi intent belum diproses
+        if (processedIntents[intentId]) {
+            revert IntentAlreadyProcessed(intentId);
+        }
+
+        // Tandai intent sebagai diproses untuk mencegah pengulangan
+        processedIntents[intentId] = true;
+
+        // Emit event
+        emit IntentCancelled(intentId);
+    }
+
+    /**
+     * @notice Dapatkan detail intent
+     * @param intentId ID intent yang dicari
+     * @return Detail intent yang diminta
+     */
+    function getIntentDetails(bytes32 intentId) external view returns (Intent memory) {
+        return intents[intentId];
     }
 }

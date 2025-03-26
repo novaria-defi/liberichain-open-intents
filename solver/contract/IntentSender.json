@@ -3,7 +3,6 @@
     {
       "type": "constructor",
       "inputs": [
-        { "name": "_mailbox", "type": "address", "internalType": "address" },
         {
           "name": "_settlementContract",
           "type": "address",
@@ -28,20 +27,9 @@
     },
     {
       "type": "function",
-      "name": "addressToBytes32",
-      "inputs": [
-        { "name": "_addr", "type": "address", "internalType": "address" }
-      ],
-      "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
-      "stateMutability": "pure"
-    },
-    {
-      "type": "function",
-      "name": "mailbox",
-      "inputs": [],
-      "outputs": [
-        { "name": "", "type": "address", "internalType": "contract IMailbox" }
-      ],
+      "name": "lockedTokens",
+      "inputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
+      "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
       "stateMutability": "view"
     },
     {
@@ -55,38 +43,22 @@
       "type": "function",
       "name": "submitIntent",
       "inputs": [
+        { "name": "_token", "type": "address", "internalType": "address" },
+        { "name": "_amount", "type": "uint256", "internalType": "uint256" },
         {
-          "name": "intent",
-          "type": "tuple",
-          "internalType": "struct IntentSender.Intent",
-          "components": [
-            { "name": "user", "type": "address", "internalType": "address" },
-            { "name": "token", "type": "address", "internalType": "address" },
-            { "name": "amount", "type": "uint256", "internalType": "uint256" },
-            {
-              "name": "sourceChainId",
-              "type": "uint32",
-              "internalType": "uint32"
-            },
-            {
-              "name": "destinationChainId",
-              "type": "uint32",
-              "internalType": "uint32"
-            },
-            {
-              "name": "deadline",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "minReceived",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ]
-        }
+          "name": "_originChain",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "_destinationChainId",
+          "type": "uint32",
+          "internalType": "uint32"
+        },
+        { "name": "_deadline", "type": "uint256", "internalType": "uint256" },
+        { "name": "_minReceived", "type": "uint256", "internalType": "uint256" }
       ],
-      "outputs": [],
+      "outputs": [{ "name": "", "type": "bytes32", "internalType": "bytes32" }],
       "stateMutability": "nonpayable"
     },
     {
@@ -100,62 +72,73 @@
           "internalType": "bytes32"
         },
         {
-          "name": "intent",
-          "type": "tuple",
+          "name": "user",
+          "type": "address",
           "indexed": false,
-          "internalType": "struct IntentSender.Intent",
-          "components": [
-            { "name": "user", "type": "address", "internalType": "address" },
-            { "name": "token", "type": "address", "internalType": "address" },
-            { "name": "amount", "type": "uint256", "internalType": "uint256" },
-            {
-              "name": "sourceChainId",
-              "type": "uint32",
-              "internalType": "uint32"
-            },
-            {
-              "name": "destinationChainId",
-              "type": "uint32",
-              "internalType": "uint32"
-            },
-            {
-              "name": "deadline",
-              "type": "uint256",
-              "internalType": "uint256"
-            },
-            {
-              "name": "minReceived",
-              "type": "uint256",
-              "internalType": "uint256"
-            }
-          ]
+          "internalType": "address"
+        },
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "sourceChainId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "destinationChainId",
+          "type": "uint32",
+          "indexed": false,
+          "internalType": "uint32"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "minReceived",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
         }
       ],
       "anonymous": false
     },
     { "type": "error", "name": "IntentExpired", "inputs": [] },
     { "type": "error", "name": "InvalidMinReceived", "inputs": [] },
-    { "type": "error", "name": "InvalidSourceChain", "inputs": [] }
+    { "type": "error", "name": "InvalidSourceChain", "inputs": [] },
+    { "type": "error", "name": "TransferFailed", "inputs": [] }
   ],
   "bytecode": {
-    "object": "0x608034608557601f61056b38819003918201601f19168301916001600160401b038311848410176089578084926040948552833981010312608557604b6020604583609d565b9201609d565b5f80546001600160a01b039384166001600160a01b031991821617909155600180549290931691161790556040516104ba90816100b18239f35b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b51906001600160a01b038216820360855756fe6080806040526004361015610012575f80fd5b5f3560e01c9081631fab59fb14610401575080634612b553146103e457806382c947b7146103b8578063c77ea822146100b1578063d5438eae1461008a5763ea42418b1461005e575f80fd5b34610086575f366003190112610086576001546040516001600160a01b039091168152602090f35b5f80fd5b34610086575f366003190112610086575f546040516001600160a01b039091168152602090f35b346100865760e0366003190112610086574260a43511156103a65762066eee63ffffffff6100dd610432565b16036103945760c43515610382576100f3610458565b63ffffffff61010061046e565b81610109610432565b610111610445565b926040519560018060a01b0316602087015260018060a01b0316604086015260443560608601521660808401521660a082015260a43560c082015260c43560e082015260e08152610100810181811067ffffffffffffffff82111761035b57604081905281516020830120916001600160a01b0361018d61041c565b1682526024356001600160a01b038116908190036100865761012082015260443561014082015260643563ffffffff81168091036100865761016082015260843563ffffffff81168091036100865783928260e0926101807f256f2a3e33d76b4efbb0bcdc2b198980e348ce087a4193c788436c5518678f3795015260a4356101a08201526101c060c435910152a2610224610458565b9063ffffffff61023261046e565b8161023b610432565b610243610445565b926040519660018060a01b0316602088015260018060a01b0316604087015260443560608701521660808501521660a083015260a43560c083015260c43560e0830152610100820152610100815261012081019080821067ffffffffffffffff83111761035b5781601f9260405260208160018060a01b035f541660018060a01b036001541663fa31de0160e01b83526218a48e6101248701526101448601526060610164860152815f608487805180610184830152836101a4828a85018286015e83830101528a199a018a1681010301925af180156103775761032357005b6020923d60201161036f575b61012067ffffffffffffffff91601f86011684010191821091111761035b576020918101031261008657005b634e487b7160e01b5f52604160045260245ffd5b3d935061032f565b6040513d5f823e3d90fd5b6040516357c0eded60e11b8152600490fd5b604051639284b19760e01b8152600490fd5b604051631022c88d60e21b8152600490fd5b346100865760203660031901126100865760206001600160a01b036103db61041c565b16604051908152f35b34610086575f3660031901126100865760206040516218a48e8152f35b34610086575f366003190112610086578062066eee60209252f35b600435906001600160a01b038216820361008657565b60643563ffffffff811681036100865790565b60843563ffffffff811681036100865790565b6004356001600160a01b03811681036100865790565b6024356001600160a01b0381168103610086579056fea2646970667358221220ce9517478d09664ba3a72ade3f2a415ef0fa53de54bb15c1348e1035f291e6cb64736f6c63430008190033",
-    "sourceMap": "123:2342:26:-:0;;;;;;;;;;;;;-1:-1:-1;;123:2342:26;;;;-1:-1:-1;;;;;123:2342:26;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::i;:::-;;;;:::i;:::-;-1:-1:-1;123:2342:26;;-1:-1:-1;;;;;123:2342:26;;;-1:-1:-1;;;;;;123:2342:26;;;;;;;-1:-1:-1;123:2342:26;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;123:2342:26;;;;;;-1:-1:-1;123:2342:26;;;;;-1:-1:-1;123:2342:26;;;;-1:-1:-1;;;;;123:2342:26;;;;;;:::o",
+    "object": "0x608034606f57601f61039f38819003918201601f19168301916001600160401b03831184841017607357808492602094604052833981010312606f57516001600160a01b03811690819003606f575f80546001600160a01b03191691909117905560405161031790816100888239f35b5f80fd5b634e487b7160e01b5f52604160045260245ffdfe6080604081815260049182361015610015575f80fd5b5f3560e01c9081631fab59fb146102c6575080634612b553146102a9578063e8d3358814610282578063ea42418b1461025b5763f55917bd14610056575f80fd5b346102135760c03660031901126102135781356001600160a01b038116929083900361021357602435926044359060643563ffffffff8116809103610213576084359060a435934283111561024b57841561023b5786516323b872dd60e01b81523387820152306024820152604481018990526020989089816064815f8a5af1908115610231575f916101cd575b50156101bd57875194898601338152818a8801528260608801528360808801528460a08801528560c08801528760e088015261010042818901528752610120870198878a1067ffffffffffffffff8b11176101aa57509488948b98946101e0947fb2580ed4d5f766c5c3149aeaf1e127fc823161194a602309981b1bfc59e4bae5999460e0998e9d60019f52865190209d8e9c8d5f5252818d5f20553389526101408601526101608501526101808401526101a08301526101c08201520152a251908152f35b604190634e487b7160e01b5f525260245ffd5b87516312171d8360e31b81528790fd5b9050893d8b1161022a575b601f8101601f1916820167ffffffffffffffff811183821017610217578b9183918c528101031261021357518015158103610213575f6100e4565b5f80fd5b60418a634e487b7160e01b5f525260245ffd5b503d6101d8565b89513d5f823e3d90fd5b86516357c0eded60e11b81528690fd5b8651631022c88d60e21b81528690fd5b5034610213575f366003190112610213575f5490516001600160a01b039091168152602090f35b503461021357602036600319011261021357602091355f5260018252805f20549051908152f35b5034610213575f36600319011261021357602090516218a48e8152f35b34610213575f366003190112610213578062066eee60209252f3fea2646970667358221220eeff213917096e9286251588819a1aef1e5f6c145d0d26ea9e597ac2e25b355964736f6c63430008190033",
+    "sourceMap": "116:1985:27:-:0;;;;;;;;;;;;;-1:-1:-1;;116:1985:27;;;;-1:-1:-1;;;;;116:1985:27;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;;;;116:1985:27;;;;;;;;-1:-1:-1;116:1985:27;;-1:-1:-1;;;;;;116:1985:27;;;;;;;;;;;;;;;;;-1:-1:-1;116:1985:27;;;;;;-1:-1:-1;116:1985:27;;;;;-1:-1:-1;116:1985:27",
     "linkReferences": {}
   },
   "deployedBytecode": {
-    "object": "0x6080806040526004361015610012575f80fd5b5f3560e01c9081631fab59fb14610401575080634612b553146103e457806382c947b7146103b8578063c77ea822146100b1578063d5438eae1461008a5763ea42418b1461005e575f80fd5b34610086575f366003190112610086576001546040516001600160a01b039091168152602090f35b5f80fd5b34610086575f366003190112610086575f546040516001600160a01b039091168152602090f35b346100865760e0366003190112610086574260a43511156103a65762066eee63ffffffff6100dd610432565b16036103945760c43515610382576100f3610458565b63ffffffff61010061046e565b81610109610432565b610111610445565b926040519560018060a01b0316602087015260018060a01b0316604086015260443560608601521660808401521660a082015260a43560c082015260c43560e082015260e08152610100810181811067ffffffffffffffff82111761035b57604081905281516020830120916001600160a01b0361018d61041c565b1682526024356001600160a01b038116908190036100865761012082015260443561014082015260643563ffffffff81168091036100865761016082015260843563ffffffff81168091036100865783928260e0926101807f256f2a3e33d76b4efbb0bcdc2b198980e348ce087a4193c788436c5518678f3795015260a4356101a08201526101c060c435910152a2610224610458565b9063ffffffff61023261046e565b8161023b610432565b610243610445565b926040519660018060a01b0316602088015260018060a01b0316604087015260443560608701521660808501521660a083015260a43560c083015260c43560e0830152610100820152610100815261012081019080821067ffffffffffffffff83111761035b5781601f9260405260208160018060a01b035f541660018060a01b036001541663fa31de0160e01b83526218a48e6101248701526101448601526060610164860152815f608487805180610184830152836101a4828a85018286015e83830101528a199a018a1681010301925af180156103775761032357005b6020923d60201161036f575b61012067ffffffffffffffff91601f86011684010191821091111761035b576020918101031261008657005b634e487b7160e01b5f52604160045260245ffd5b3d935061032f565b6040513d5f823e3d90fd5b6040516357c0eded60e11b8152600490fd5b604051639284b19760e01b8152600490fd5b604051631022c88d60e21b8152600490fd5b346100865760203660031901126100865760206001600160a01b036103db61041c565b16604051908152f35b34610086575f3660031901126100865760206040516218a48e8152f35b34610086575f366003190112610086578062066eee60209252f35b600435906001600160a01b038216820361008657565b60643563ffffffff811681036100865790565b60843563ffffffff811681036100865790565b6004356001600160a01b03811681036100865790565b6024356001600160a01b0381168103610086579056fea2646970667358221220ce9517478d09664ba3a72ade3f2a415ef0fa53de54bb15c1348e1035f291e6cb64736f6c63430008190033",
-    "sourceMap": "123:2342:26:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;123:2342:26;;;;;;;;-1:-1:-1;;;;;123:2342:26;;;;;;;;;;;;;;;;;;-1:-1:-1;;123:2342:26;;;;;;;;-1:-1:-1;;;;;123:2342:26;;;;;;;;;;;;;;-1:-1:-1;;123:2342:26;;;;1099:15;1080;123:2342;1080:34;;1076:87;;303:6;123:2342;1185:20;;:::i;:::-;123:2342;1185:49;1181:107;;1302:18;123:2342;1302:23;1298:81;;1518:11;;:::i;:::-;123:2342;1531:12;;:::i;:::-;1560:20;;;:::i;:::-;1582:25;;:::i;:::-;123:2342;;;;;;;;;;1531:12;1507:138;;123:2342;;;;;;;;;;;1545:13;123:2342;1185:20;123:2342;;;;1582:25;123:2342;;;;1080:15;123:2342;;;1080:15;123:2342;1302:18;123:2342;;;1302:18;123:2342;;;;;;1507:138;;123:2342;;;;;;;;;;;;;;;;;;1531:12;1507:138;;1497:149;;-1:-1:-1;;;;;123:2342:26;;:::i;:::-;;;;1531:12;123:2342;-1:-1:-1;;;;;123:2342:26;;;;;;;;;;;;1545:13;123:2342;;;;;1185:20;123:2342;;;;;;;;;;;;;1582:25;123:2342;;;;;;;;;;;;;;;1716:33;123:2342;;;1080:15;123:2342;;;;;;1302:18;123:2342;;;;1716:33;1842:11;;:::i;:::-;1867:12;123:2342;1867:12;;:::i;:::-;1920:20;;;:::i;:::-;1954:25;;:::i;:::-;123:2342;;;;;;;;;;1531:12;1818:254;;123:2342;;;;;;;;;;;1545:13;123:2342;1185:20;123:2342;;;;1582:25;123:2342;;;;1080:15;123:2342;;;1080:15;123:2342;1302:18;123:2342;;;1302:18;123:2342;;;;;;;;;;1818:254;;123:2342;;;;;;;;;;;;;;;;;;1531:12;123:2342;;;;;;;;;;;;;;;;;;;;2166:103;;362:7;2166:103;;;123:2342;;;;;1185:20;123:2342;;;;;;1582:25;123:2342;;;;;;;;;;1818:254;;;;123:2342;;;;;;;;;1507:138;;;123:2342;;;;;2166:103;;;;;;;;;;;123:2342;2166:103;1531:12;2166:103;;1531:12;2166:103;;;;123:2342;;;;;;;;;;;;;;;;;;1531:12;2166:103;;;123:2342;;;;;;;;;;;;;;1531:12;123:2342;;2166:103;;;-1:-1:-1;2166:103:26;;;123:2342;;;;;;;;;1298:81;123:2342;;-1:-1:-1;;;1348:20:26;;123:2342;;1348:20;1181:107;123:2342;;-1:-1:-1;;;1257:20:26;;123:2342;;1257:20;1076:87;123:2342;;-1:-1:-1;;;1137:15:26;;123:2342;;1137:15;123:2342;;;;;;-1:-1:-1;;123:2342:26;;;;;-1:-1:-1;;;;;123:2342:26;;:::i;:::-;;;;;;;;;;;;;;-1:-1:-1;;123:2342:26;;;;;;;362:7;123:2342;;;;;;;;;-1:-1:-1;;123:2342:26;;;;;303:6;123:2342;;;;;;;;-1:-1:-1;;;;;123:2342:26;;;;;;:::o;:::-;1185:20;123:2342;;;;;;;;;:::o;:::-;1582:25;123:2342;;;;;;;;;:::o;:::-;;;-1:-1:-1;;;;;123:2342:26;;;;;;;:::o;:::-;1531:12;123:2342;-1:-1:-1;;;;;123:2342:26;;;;;;;:::o",
+    "object": "0x6080604081815260049182361015610015575f80fd5b5f3560e01c9081631fab59fb146102c6575080634612b553146102a9578063e8d3358814610282578063ea42418b1461025b5763f55917bd14610056575f80fd5b346102135760c03660031901126102135781356001600160a01b038116929083900361021357602435926044359060643563ffffffff8116809103610213576084359060a435934283111561024b57841561023b5786516323b872dd60e01b81523387820152306024820152604481018990526020989089816064815f8a5af1908115610231575f916101cd575b50156101bd57875194898601338152818a8801528260608801528360808801528460a08801528560c08801528760e088015261010042818901528752610120870198878a1067ffffffffffffffff8b11176101aa57509488948b98946101e0947fb2580ed4d5f766c5c3149aeaf1e127fc823161194a602309981b1bfc59e4bae5999460e0998e9d60019f52865190209d8e9c8d5f5252818d5f20553389526101408601526101608501526101808401526101a08301526101c08201520152a251908152f35b604190634e487b7160e01b5f525260245ffd5b87516312171d8360e31b81528790fd5b9050893d8b1161022a575b601f8101601f1916820167ffffffffffffffff811183821017610217578b9183918c528101031261021357518015158103610213575f6100e4565b5f80fd5b60418a634e487b7160e01b5f525260245ffd5b503d6101d8565b89513d5f823e3d90fd5b86516357c0eded60e11b81528690fd5b8651631022c88d60e21b81528690fd5b5034610213575f366003190112610213575f5490516001600160a01b039091168152602090f35b503461021357602036600319011261021357602091355f5260018252805f20549051908152f35b5034610213575f36600319011261021357602090516218a48e8152f35b34610213575f366003190112610213578062066eee60209252f3fea2646970667358221220eeff213917096e9286251588819a1aef1e5f6c145d0d26ea9e597ac2e25b355964736f6c63430008190033",
+    "sourceMap": "116:1985:27:-:0;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;116:1985:27;;;;;;-1:-1:-1;;;;;116:1985:27;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;1103:15;;1090:28;;;1086:56;;1156:17;;1152:50;;116:1985;;-1:-1:-1;;;1277:63:27;;1305:10;1277:63;;;116:1985;1325:4;116:1985;;;;;;;;;;;;;;;;;-1:-1:-1;1277:63:27;;;;;;;;116:1985;1277:63;;;116:1985;1276:64;;1272:118;;116:1985;;1467:258;;;;1305:10;116:1985;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;1103:15;116:1985;;;;1467:258;;116:1985;;;;;;;;;;;;;;;;;;;;;;1838:220;116:1985;;;;;;;;;;;1444:291;;116:1985;;;;;;;;;;;;1305:10;116:1985;;;;;;;;;;;;;;;;;;;;;;;;1838:220;116:1985;;;;;;;;;;;;;;;;;1272:118;116:1985;;-1:-1:-1;;;1363:16:27;;116:1985;;1363:16;1277:63;;;;;;;;;;116:1985;;;-1:-1:-1;;116:1985:27;;;;;;;;;;;;;;;;;;1277:63;;116:1985;;;;;;;;;;;;1277:63;;;116:1985;;;;;;;;;;;;;;;;1277:63;;;;;;116:1985;;;;;;;;;1152:50;116:1985;;-1:-1:-1;;;1182:20:27;;116:1985;;1182:20;1086:56;116:1985;;-1:-1:-1;;;1127:15:27;;116:1985;;1127:15;116:1985;;;;;;;-1:-1:-1;;116:1985:27;;;;;;;;-1:-1:-1;;;;;116:1985:27;;;;;;;;;;;;;;;-1:-1:-1;;116:1985:27;;;;;;;;;;;;;;;;;;;;;;;;;;;;;-1:-1:-1;;116:1985:27;;;;;;;299:7;116:1985;;;;;;;;;-1:-1:-1;;116:1985:27;;;;;240:6;116:1985;;;",
     "linkReferences": {}
   },
   "methodIdentifiers": {
     "ARBITRUM_SEPOLIA_CHAIN_ID()": "1fab59fb",
     "LIBERICHAIN_CHAIN_ID()": "4612b553",
-    "addressToBytes32(address)": "82c947b7",
-    "mailbox()": "d5438eae",
+    "lockedTokens(bytes32)": "e8d33588",
     "settlementContract()": "ea42418b",
-    "submitIntent((address,address,uint256,uint32,uint32,uint256,uint256))": "c77ea822"
+    "submitIntent(address,uint256,uint256,uint32,uint256,uint256)": "f55917bd"
   },
-  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.25+commit.b61c2a91\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_mailbox\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_settlementContract\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"IntentExpired\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidMinReceived\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSourceChain\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"intentId\",\"type\":\"bytes32\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"sourceChainId\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"destinationChainId\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"deadline\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"minReceived\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"struct IntentSender.Intent\",\"name\":\"intent\",\"type\":\"tuple\"}],\"name\":\"IntentSubmitted\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"ARBITRUM_SEPOLIA_CHAIN_ID\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"LIBERICHAIN_CHAIN_ID\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"addressToBytes32\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"mailbox\",\"outputs\":[{\"internalType\":\"contract IMailbox\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"settlementContract\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"sourceChainId\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"destinationChainId\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"deadline\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"minReceived\",\"type\":\"uint256\"}],\"internalType\":\"struct IntentSender.Intent\",\"name\":\"intent\",\"type\":\"tuple\"}],\"name\":\"submitIntent\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/IntentSender.sol\":\"IntentSender\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@arbitrum/=node_modules/@arbitrum/\",\":@chainlink/=node_modules/@chainlink/\",\":@eth-optimism/=node_modules/@eth-optimism/\",\":@hyperlane-xyz/core/=node_modules/@hyperlane-xyz/core/\",\":@layerzerolabs/=node_modules/@layerzerolabs/\",\":@offchainlabs/=node_modules/@offchainlabs/\",\":@openzeppelin-contracts/contract/=lib/openzeppelin/\",\":@openzeppelin/=node_modules/@openzeppelin/\",\":@scroll-tech/=node_modules/@scroll-tech/\",\":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/\",\":forge-std/=lib/forge-std/src/\",\":fx-portal/=node_modules/fx-portal/\",\":halmos-cheatcodes/=lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/\",\":openzeppelin-contracts/=lib/openzeppelin-contracts/\"],\"viaIR\":true},\"sources\":{\"node_modules/@hyperlane-xyz/core/contracts/interfaces/IInterchainSecurityModule.sol\":{\"keccak256\":\"0x1996b75eef35e7769ea2c6e76d4e8ae62a8db6176b1d0b5c5d2e9fcb0c237c9a\",\"license\":\"MIT OR Apache-2.0\",\"urls\":[\"bzz-raw://1493c0dc46ee41c6d94cbc770a324c58189dd59949bec93162d1285fc16e4ca8\",\"dweb:/ipfs/QmVJov4Ti6etR2Vosb9Z8Hd1yK7cqsssq3kxqUzdFDW9gN\"]},\"node_modules/@hyperlane-xyz/core/contracts/interfaces/IMailbox.sol\":{\"keccak256\":\"0x9cd728ba304279775818f8c7b4c02f8c5dd2b28e051ec466dbe36129be01a6ee\",\"license\":\"MIT OR Apache-2.0\",\"urls\":[\"bzz-raw://23461e80c67508d6f0f94a317c48d99a1942209ebc306b50f843b3f1cc920bac\",\"dweb:/ipfs/QmXbJSFtHfxpHwtvGZJBodSDcQHAb6fGsPU17w11dapVnC\"]},\"node_modules/@hyperlane-xyz/core/contracts/interfaces/hooks/IPostDispatchHook.sol\":{\"keccak256\":\"0x61f254e6753f7dce900241f1c73dae8ac205e54cb791db5feb2e654b820c2cab\",\"license\":\"MIT OR Apache-2.0\",\"urls\":[\"bzz-raw://611b016e9c90a852f0486ff9129daf8309c77ac22d3d71cf4fb3d9e200f17e97\",\"dweb:/ipfs/Qmb7J7sXKFM4nYkZ4wysmyZqAupbMtBWGsPmzQwfQt18d3\"]},\"src/IntentSender.sol\":{\"keccak256\":\"0x9365781233a9d587380ce53fc9c6482bc87d249478087f6c1534d2f7dc803277\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://040b92e2b37f89b19a205d83b12a28acaa3ce323fe3b25b391fe543557b65868\",\"dweb:/ipfs/QmUPnEEL76t55Pdm2g37iSAd2ZQAVDvYCURSZ4PmXjDHrM\"]}},\"version\":1}",
+  "rawMetadata": "{\"compiler\":{\"version\":\"0.8.25+commit.b61c2a91\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_settlementContract\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"IntentExpired\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidMinReceived\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidSourceChain\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TransferFailed\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"intentId\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"user\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"sourceChainId\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"destinationChainId\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"deadline\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"minReceived\",\"type\":\"uint256\"}],\"name\":\"IntentSubmitted\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"ARBITRUM_SEPOLIA_CHAIN_ID\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"LIBERICHAIN_CHAIN_ID\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"lockedTokens\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"settlementContract\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_originChain\",\"type\":\"uint256\"},{\"internalType\":\"uint32\",\"name\":\"_destinationChainId\",\"type\":\"uint32\"},{\"internalType\":\"uint256\",\"name\":\"_deadline\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_minReceived\",\"type\":\"uint256\"}],\"name\":\"submitIntent\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"src/IntentSender.sol\":\"IntentSender\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[\":@arbitrum/=node_modules/@arbitrum/\",\":@chainlink/=node_modules/@chainlink/\",\":@eth-optimism/=node_modules/@eth-optimism/\",\":@hyperlane-xyz/core/=node_modules/@hyperlane-xyz/core/\",\":@layerzerolabs/=node_modules/@layerzerolabs/\",\":@offchainlabs/=node_modules/@offchainlabs/\",\":@openzeppelin-contracts/contract/=lib/openzeppelin/\",\":@openzeppelin/=node_modules/@openzeppelin/\",\":@scroll-tech/=node_modules/@scroll-tech/\",\":erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/\",\":forge-std/=lib/forge-std/src/\",\":fx-portal/=node_modules/fx-portal/\",\":halmos-cheatcodes/=lib/openzeppelin-contracts/lib/halmos-cheatcodes/src/\",\":openzeppelin-contracts/=lib/openzeppelin-contracts/\"],\"viaIR\":true},\"sources\":{\"node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"keccak256\":\"0xbbc8ac883ac3c0078ce5ad3e288fbb3ffcc8a30c3a98c0fda0114d64fc44fca2\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://87a7a5d2f6f63f84598af02b8c50ca2df2631cb8ba2453e8d95fcb17e4be9824\",\"dweb:/ipfs/QmR76hqtAcRqoFj33tmNjcWTLrgNsAaakYwnKZ8zoJtKei\"]},\"src/IntentSender.sol\":{\"keccak256\":\"0x690d17ec79da3e70c3f0c40b0e9155500ed13b7743e734b4aed3d4ea94d799a0\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://353bc0be442c3dde308a19f2db6924cb7a1b6ab148cb2208478bed8cb4180b15\",\"dweb:/ipfs/QmaC2vRPooxjk3RbDMoU2QQpaFzuDGhkzMoWjsXJ4cHYK5\"]}},\"version\":1}",
   "metadata": {
     "compiler": { "version": "0.8.25+commit.b61c2a91" },
     "language": "Solidity",
@@ -163,11 +146,6 @@
       "abi": [
         {
           "inputs": [
-            {
-              "internalType": "address",
-              "name": "_mailbox",
-              "type": "address"
-            },
             {
               "internalType": "address",
               "name": "_settlementContract",
@@ -180,6 +158,7 @@
         { "inputs": [], "type": "error", "name": "IntentExpired" },
         { "inputs": [], "type": "error", "name": "InvalidMinReceived" },
         { "inputs": [], "type": "error", "name": "InvalidSourceChain" },
+        { "inputs": [], "type": "error", "name": "TransferFailed" },
         {
           "inputs": [
             {
@@ -189,46 +168,45 @@
               "indexed": true
             },
             {
-              "internalType": "struct IntentSender.Intent",
-              "name": "intent",
-              "type": "tuple",
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "user",
-                  "type": "address"
-                },
-                {
-                  "internalType": "address",
-                  "name": "token",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "amount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint32",
-                  "name": "sourceChainId",
-                  "type": "uint32"
-                },
-                {
-                  "internalType": "uint32",
-                  "name": "destinationChainId",
-                  "type": "uint32"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "deadline",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "minReceived",
-                  "type": "uint256"
-                }
-              ],
+              "internalType": "address",
+              "name": "user",
+              "type": "address",
+              "indexed": false
+            },
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address",
+              "indexed": false
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256",
+              "indexed": false
+            },
+            {
+              "internalType": "uint256",
+              "name": "sourceChainId",
+              "type": "uint256",
+              "indexed": false
+            },
+            {
+              "internalType": "uint32",
+              "name": "destinationChainId",
+              "type": "uint32",
+              "indexed": false
+            },
+            {
+              "internalType": "uint256",
+              "name": "deadline",
+              "type": "uint256",
+              "indexed": false
+            },
+            {
+              "internalType": "uint256",
+              "name": "minReceived",
+              "type": "uint256",
               "indexed": false
             }
           ],
@@ -256,26 +234,13 @@
         },
         {
           "inputs": [
-            { "internalType": "address", "name": "_addr", "type": "address" }
-          ],
-          "stateMutability": "pure",
-          "type": "function",
-          "name": "addressToBytes32",
-          "outputs": [
             { "internalType": "bytes32", "name": "", "type": "bytes32" }
-          ]
-        },
-        {
-          "inputs": [],
+          ],
           "stateMutability": "view",
           "type": "function",
-          "name": "mailbox",
+          "name": "lockedTokens",
           "outputs": [
-            {
-              "internalType": "contract IMailbox",
-              "name": "",
-              "type": "address"
-            }
+            { "internalType": "uint256", "name": "", "type": "uint256" }
           ]
         },
         {
@@ -289,52 +254,35 @@
         },
         {
           "inputs": [
+            { "internalType": "address", "name": "_token", "type": "address" },
+            { "internalType": "uint256", "name": "_amount", "type": "uint256" },
             {
-              "internalType": "struct IntentSender.Intent",
-              "name": "intent",
-              "type": "tuple",
-              "components": [
-                {
-                  "internalType": "address",
-                  "name": "user",
-                  "type": "address"
-                },
-                {
-                  "internalType": "address",
-                  "name": "token",
-                  "type": "address"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "amount",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint32",
-                  "name": "sourceChainId",
-                  "type": "uint32"
-                },
-                {
-                  "internalType": "uint32",
-                  "name": "destinationChainId",
-                  "type": "uint32"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "deadline",
-                  "type": "uint256"
-                },
-                {
-                  "internalType": "uint256",
-                  "name": "minReceived",
-                  "type": "uint256"
-                }
-              ]
+              "internalType": "uint256",
+              "name": "_originChain",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint32",
+              "name": "_destinationChainId",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_deadline",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_minReceived",
+              "type": "uint256"
             }
           ],
           "stateMutability": "nonpayable",
           "type": "function",
-          "name": "submitIntent"
+          "name": "submitIntent",
+          "outputs": [
+            { "internalType": "bytes32", "name": "", "type": "bytes32" }
+          ]
         }
       ],
       "devdoc": { "kind": "dev", "methods": {}, "version": 1 },
@@ -365,40 +313,24 @@
       "viaIR": true
     },
     "sources": {
-      "node_modules/@hyperlane-xyz/core/contracts/interfaces/IInterchainSecurityModule.sol": {
-        "keccak256": "0x1996b75eef35e7769ea2c6e76d4e8ae62a8db6176b1d0b5c5d2e9fcb0c237c9a",
+      "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": {
+        "keccak256": "0xbbc8ac883ac3c0078ce5ad3e288fbb3ffcc8a30c3a98c0fda0114d64fc44fca2",
         "urls": [
-          "bzz-raw://1493c0dc46ee41c6d94cbc770a324c58189dd59949bec93162d1285fc16e4ca8",
-          "dweb:/ipfs/QmVJov4Ti6etR2Vosb9Z8Hd1yK7cqsssq3kxqUzdFDW9gN"
+          "bzz-raw://87a7a5d2f6f63f84598af02b8c50ca2df2631cb8ba2453e8d95fcb17e4be9824",
+          "dweb:/ipfs/QmR76hqtAcRqoFj33tmNjcWTLrgNsAaakYwnKZ8zoJtKei"
         ],
-        "license": "MIT OR Apache-2.0"
-      },
-      "node_modules/@hyperlane-xyz/core/contracts/interfaces/IMailbox.sol": {
-        "keccak256": "0x9cd728ba304279775818f8c7b4c02f8c5dd2b28e051ec466dbe36129be01a6ee",
-        "urls": [
-          "bzz-raw://23461e80c67508d6f0f94a317c48d99a1942209ebc306b50f843b3f1cc920bac",
-          "dweb:/ipfs/QmXbJSFtHfxpHwtvGZJBodSDcQHAb6fGsPU17w11dapVnC"
-        ],
-        "license": "MIT OR Apache-2.0"
-      },
-      "node_modules/@hyperlane-xyz/core/contracts/interfaces/hooks/IPostDispatchHook.sol": {
-        "keccak256": "0x61f254e6753f7dce900241f1c73dae8ac205e54cb791db5feb2e654b820c2cab",
-        "urls": [
-          "bzz-raw://611b016e9c90a852f0486ff9129daf8309c77ac22d3d71cf4fb3d9e200f17e97",
-          "dweb:/ipfs/Qmb7J7sXKFM4nYkZ4wysmyZqAupbMtBWGsPmzQwfQt18d3"
-        ],
-        "license": "MIT OR Apache-2.0"
+        "license": "MIT"
       },
       "src/IntentSender.sol": {
-        "keccak256": "0x9365781233a9d587380ce53fc9c6482bc87d249478087f6c1534d2f7dc803277",
+        "keccak256": "0x690d17ec79da3e70c3f0c40b0e9155500ed13b7743e734b4aed3d4ea94d799a0",
         "urls": [
-          "bzz-raw://040b92e2b37f89b19a205d83b12a28acaa3ce323fe3b25b391fe543557b65868",
-          "dweb:/ipfs/QmUPnEEL76t55Pdm2g37iSAd2ZQAVDvYCURSZ4PmXjDHrM"
+          "bzz-raw://353bc0be442c3dde308a19f2db6924cb7a1b6ab148cb2208478bed8cb4180b15",
+          "dweb:/ipfs/QmaC2vRPooxjk3RbDMoU2QQpaFzuDGhkzMoWjsXJ4cHYK5"
         ],
         "license": "MIT"
       }
     },
     "version": 1
   },
-  "id": 26
+  "id": 27
 }

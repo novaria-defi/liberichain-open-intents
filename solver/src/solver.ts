@@ -1,5 +1,4 @@
 import { ethers } from 'ethers';
-import { createPublicClient, http, Address } from 'viem';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -7,186 +6,203 @@ import path from 'path';
 // Load environment variables
 dotenv.config();
 
-// Interface untuk Intent
 interface Intent {
+  intentId: string;
   user: string;
   token: string;
   amount: bigint;
-  sourceChainId: number;
-  destinationChainId: number;
+  sourceChainId: bigint;
+  destinationChainId: bigint;
   deadline: bigint;
   minReceived: bigint;
-  intentId?: string;
 }
 
-class IntentBotSolver {
-  private sourceChainProvider: ethers.Provider;
-  private destChainProvider: ethers.Provider;
-  private sourceChainClient: any;
-  private destChainClient: any;
+class CrossChainIntentSolver {
+  private sourceProvider: ethers.JsonRpcProvider;
+  private destProvider: ethers.JsonRpcProvider;
   private intentSenderContract: ethers.Contract;
-  private intentSettlementContract: ethers.Contract;
+  private sourceWallet: ethers.Wallet;
+  private destWallet: ethers.Wallet;
   private processedIntents: Set<string> = new Set();
-  private hasActiveListener: boolean = false;
+  private scanInterval: NodeJS.Timeout | null = null;
+  private lastScannedBlock: number = 0;
 
-  constructor(
-    sourceRpcUrl: string, 
-    destRpcUrl: string,
-    intentSenderAddress: Address,
-    intentSettlementAddress: Address
-  ) {
-    // Inisialisasi provider
-    this.sourceChainProvider = new ethers.JsonRpcProvider(sourceRpcUrl);
-    this.destChainProvider = new ethers.JsonRpcProvider(destRpcUrl);
+  // Chain IDs
+  private readonly ARBITRUM_SEPOLIA = 421614;
+  private readonly LIBERICHAIN = 1614990;
 
-    // Inisialisasi viem clients
-    this.sourceChainClient = createPublicClient({
-      transport: http(sourceRpcUrl)
-    });
+  // Token mapping (Arbitrum Sepolia -> Liberichain)
+  private readonly TOKEN_MAPPING: Record<string, string> = {
+    "0x4eAC1d777438602D869968371e2fFD6e72F17228": "0x66674b815dEF43A3A32DB2aA0abc26E5603C15ED"
+  };
 
-    this.destChainClient = createPublicClient({
-      transport: http(destRpcUrl)
-    });
+  constructor() {
+    // Setup providers
+    this.sourceProvider = new ethers.JsonRpcProvider(process.env.SOURCE_CHAIN_RPC_URL!);
+    this.destProvider = new ethers.JsonRpcProvider(process.env.DEST_CHAIN_RPC_URL!);
 
-    // Baca ABI dari file JSON
+    // Setup wallets
+    this.sourceWallet = new ethers.Wallet(process.env.SOLVER_PRIVATE_KEY!, this.sourceProvider);
+    this.destWallet = new ethers.Wallet(process.env.SOLVER_PRIVATE_KEY!, this.destProvider);
+
+    // Load IntentSender ABI
     const intentSenderABI = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "../contract/IntentSender.json"), "utf-8")
     ).abi;
 
-    const intentSettlementABI = JSON.parse(
-      fs.readFileSync(path.resolve(__dirname, "../contract/IntentSettlement.json"), "utf-8")
-    ).abi;
-
-    // Siapkan signer untuk transaksi
-    const wallet = new ethers.Wallet(
-      process.env.SOLVER_PRIVATE_KEY!, 
-      this.destChainProvider
-    );
-
-    // Inisialisasi kontrak-kontrak
+    // Create contract instance
     this.intentSenderContract = new ethers.Contract(
-      intentSenderAddress, 
-      intentSenderABI, 
-      this.sourceChainProvider
-    );
-
-    this.intentSettlementContract = new ethers.Contract(
-      intentSettlementAddress, 
-      intentSettlementABI, 
-      wallet
+      process.env.INTENT_SENDER_CONTRACT_ADDRESS!,
+      intentSenderABI,
+      this.sourceWallet
     );
   }
 
-  // Metode untuk melakukan polling terhadap event IntentSubmitted
-  async startPolling(pollInterval: number = 5000) {
-    console.log('Starting Intent Bot Solver...');
+  async start() {
+    console.log("🚀 Cross-Chain Intent Solver started!");
+    console.log(`🔗 Monitoring IntentSender at ${this.intentSenderContract.target} on Arbitrum Sepolia`);
+    console.log(`💸 Will send tokens on Liberichain (${this.LIBERICHAIN})`);
+    console.log("⏱️ Scanning every 2 seconds");
+
+    // Get initial block number
+    this.lastScannedBlock = await this.sourceProvider.getBlockNumber() - 1;
+    console.log(`🔍 Starting scan from block ${this.lastScannedBlock}`);
+
+    // Start polling
+    this.scanInterval = setInterval(async () => {
+      try {
+        await this.pollNewBlocks();
+      } catch (error) {
+        console.error("⚠️ Error during polling:", error);
+      }
+    }, 2000); // 2 seconds interval
+  }
+
+  stop() {
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      console.log("🛑 Solver stopped");
+    }
+  }
+
+  private async pollNewBlocks() {
+    const currentBlock = await this.sourceProvider.getBlockNumber();
     
-    // Cegah listener ganda
-    if (this.hasActiveListener) {
-      console.log('Listener already active');
+    if (currentBlock <= this.lastScannedBlock) {
+      console.log("⏭️ No new blocks since last scan");
       return;
     }
 
-    let transactionsFound = false;
+    console.log(`🔍 Scanning blocks ${this.lastScannedBlock + 1}-${currentBlock}`);
+    await this.checkIntents(this.lastScannedBlock + 1, currentBlock);
+    this.lastScannedBlock = currentBlock;
+  }
 
-    // Listen to IntentSubmitted event
-    const listener = this.intentSenderContract.on('IntentSubmitted', async (intentId, intent, event) => {
-      transactionsFound = true;
-      console.log('New Intent Received:', intentId);
+  private async checkIntents(fromBlock: number, toBlock: number) {
+    const eventFilter = this.intentSenderContract.filters.IntentSubmitted();
+    const events = await this.intentSenderContract.queryFilter(eventFilter, fromBlock, toBlock);
+
+    if (events.length === 0) {
+      console.log("⏭️ No new intents found");
+      return;
+    }
+
+    for (const event of events) {
+      if (!(event instanceof ethers.EventLog)) continue;
+
+      const intent = event.args as unknown as Intent;
       
-      // Hindari memproses intent yang sama berulang kali
-      if (this.processedIntents.has(intentId)) {
-        console.log('Intent already processed:', intentId);
+      // Validate chain IDs
+      if (intent.sourceChainId !== BigInt(this.ARBITRUM_SEPOLIA) || 
+          intent.destinationChainId !== BigInt(this.LIBERICHAIN)) {
+        console.log(`⏭️ Skipping intent for other chains (src: ${intent.sourceChainId}, dest: ${intent.destinationChainId})`);
+        continue;
+      }
+
+      if (this.processedIntents.has(intent.intentId)) {
+        console.log(`⏭️ Intent ${intent.intentId} already processed`);
+        continue;
+      }
+
+      console.log("\n🎯 New Cross-Chain Intent Detected:");
+      console.log(`🆔 Intent ID: ${intent.intentId}`);
+      console.log(`👤 User: ${intent.user}`);
+      console.log(`💰 Amount: ${ethers.formatEther(intent.amount)} tokens`);
+      console.log(`⏱️ Deadline: ${new Date(Number(intent.deadline) * 1000)}`);
+      console.log(`📝 Tx hash: ${event.transactionHash}`);
+
+      await this.processCrossChainIntent(intent);
+      this.processedIntents.add(intent.intentId);
+    }
+  }
+
+  private async processCrossChainIntent(intent: Intent) {
+    try {
+      // Check deadline
+      if (BigInt(Math.floor(Date.now() / 1000)) > intent.deadline) {
+        console.log("❌ Intent expired");
         return;
       }
 
-      try {
-        await this.processIntentRequest({
-          user: intent.user,
-          token: intent.token,
-          amount: intent.amount,
-          sourceChainId: intent.sourceChainId,
-          destinationChainId: intent.destinationChainId,
-          deadline: intent.deadline,
-          minReceived: intent.minReceived,
-          intentId: intentId
-        });
-
-        // Tandai intent sebagai sudah diproses
-        this.processedIntents.add(intentId);
-      } catch (error) {
-        console.error('Error processing intent:', error);
+      // Get corresponding token address on destination chain
+      const destToken = this.TOKEN_MAPPING[intent.token];
+      if (!destToken) {
+        console.log(`❌ No token mapping found for ${intent.token}`);
+        return;
       }
-    });
 
-    // Set flag listener aktif
-    this.hasActiveListener = true;
+      // Create token contract on destination chain
+      const tokenAbi = [
+        "function balanceOf(address) view returns (uint)",
+        "function transfer(address, uint) returns (bool)",
+        "function decimals() view returns (uint8)",
+        "function symbol() view returns (string)"
+      ];
+      
+      const destTokenContract = new ethers.Contract(
+        destToken,
+        tokenAbi,
+        this.destWallet
+      );
 
-    // Tambahkan log untuk transaksi yang tidak ditemukan
-    setTimeout(() => {
-      if (!transactionsFound) {
-        console.log('No incoming transactions');
+      // Check solver balance on destination chain
+      const [symbol, decimals, balance] = await Promise.all([
+        destTokenContract.symbol(),
+        destTokenContract.decimals(),
+        destTokenContract.balanceOf(this.destWallet.address)
+      ]);
+
+      console.log(`💰 Solver balance on Liberichain: ${ethers.formatUnits(balance, decimals)} ${symbol}`);
+
+      if (balance < intent.amount) {
+        console.log("❌ Insufficient balance on destination chain");
+        return;
       }
-      transactionsFound = false;
-    }, pollInterval);
 
-    // Prevent the process from exiting
-    await new Promise(() => {});
-  }
+      // Execute cross-chain transfer
+      console.log(`🔄 Sending ${ethers.formatUnits(intent.amount, decimals)} ${symbol} to ${intent.user} on Liberichain...`);
+      
+      const tx = await destTokenContract.transfer(intent.user, intent.amount);
+      console.log(`📤 Transaction sent: ${tx.hash}`);
 
-  // Metode untuk memproses intent request
-  private async processIntentRequest(intent: Intent) {
-    try {
-      console.log('Processing Intent:', intent);
+      const receipt = await tx.wait();
+      console.log("✅ Transfer completed!");
+      console.log(`📝 Tx hash: ${tx.hash}`);
+      console.log(`⛽ Gas used: ${receipt?.gasUsed.toString()}`);
+      console.log(`🔗 Explorer: https://liberichain.blockscout.com/tx/${tx.hash}`);
 
-      // Siapkan signer untuk transaksi
-      const wallet = new ethers.Wallet(
-        process.env.SOLVER_PRIVATE_KEY!, 
-        this.destChainProvider
-      );
-
-      // Transfer token di chain tujuan
-      const tokenContract = new ethers.Contract(
-        intent.token, 
-        ['function transfer(address to, uint256 amount) public'],
-        wallet
-      );
-
-      const transferTx = await tokenContract.transfer(
-        intent.user, 
-        intent.amount
-      );
-      await transferTx.wait();
-
-      // Lakukan settlement di kontrak tujuan
-      const settlementTx = await this.intentSettlementContract.executeSettlement(
-        intent.user,
-        intent.amount,
-        intent.intentId
-      );
-      await settlementTx.wait();
-
-      console.log(`Intent processed for ${intent.user}`);
     } catch (error) {
-      console.error('Error processing intent request:', error);
-      throw error;
+      console.error("⚠️ Error processing cross-chain intent:", error);
     }
   }
 }
 
-// Contoh penggunaan
-async function main() {
-  const solver = new IntentBotSolver(
-    process.env.SOURCE_CHAIN_RPC_URL!,
-    process.env.DEST_CHAIN_RPC_URL!,
-    process.env.INTENT_SENDER_CONTRACT_ADDRESS! as Address,
-    process.env.INTENT_SETTLEMENT_CONTRACT_ADDRESS! as Address
-  );
+// Start the solver
+const solver = new CrossChainIntentSolver();
+solver.start().catch(console.error);
 
-  solver.startPolling();
-}
-
-// Jalankan bot
-main().catch(console.error);
-
-export default IntentBotSolver;
+// Graceful shutdown
+process.on('SIGINT', () => {
+  solver.stop();
+  process.exit();
+});

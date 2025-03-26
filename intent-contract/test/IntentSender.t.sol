@@ -1,87 +1,81 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {console, Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {MockERC20} from "../src/mocks/MockERC20.sol";
 import {IntentSender} from "../src/IntentSender.sol";
-import {MockMailbox} from "../src/mocks/MockMailbox.sol";
 
 contract IntentSenderTest is Test {
     IntentSender public intentSender;
-    MockMailbox public mockMailbox;
-    uint32 public liberichainChainId = 1614990;
-    uint32 public arbitrumSepoliaChainId = 421614;
-    
-    // Test data
-    address public settlementContract = address(0x789);
-    address public user = address(0x123);
-    address public token = address(0x456);
-    uint256 public amount = 1000;
-    uint256 public minReceived = 500;
-    uint256 public deadline = block.timestamp + 1 days; // Set to 1 day in the future
+    MockERC20 public mockToken;
+    address public user = address(1);
+    address public settlementContract = address(2);
 
     function setUp() public {
-        // Deploy MockMailbox and IntentSender contracts
-        mockMailbox = new MockMailbox();
-        settlementContract = address(0x789); // Settlement contract address
+        mockToken = new MockERC20();
+        intentSender = new IntentSender(settlementContract);
 
-        intentSender = new IntentSender(address(mockMailbox), settlementContract);
+        // Mint tokens to user and approve IntentSender
+        mockToken.mint(user, 1000 * 10**18);
+        vm.prank(user);
+        mockToken.approve(address(intentSender), 1000 * 10**18);
     }
 
-    function testSubmitIntentSuccess() public {
-        IntentSender.Intent memory validIntent = IntentSender.Intent({
-            user: user,
-            token: token,
-            amount: amount,
-            sourceChainId: arbitrumSepoliaChainId,
-            destinationChainId: liberichainChainId,
-            deadline: deadline,
-            minReceived: minReceived
-        });
-
-        // Call submitIntent with valid data
-        vm.expectEmit(true, true, true, true);
-        emit IntentSender.IntentSubmitted(
-            keccak256(abi.encode(validIntent.user, validIntent.token, validIntent.amount, validIntent.sourceChainId, validIntent.destinationChainId, validIntent.deadline, validIntent.minReceived)),
-            validIntent
-        );
-
-        intentSender.submitIntent(validIntent);
-    }
-
-    function testSubmitIntentRevertsIfExpired() public {
-        uint256 fixedTimestamp = 1000000;
-        vm.warp(fixedTimestamp); // Sinkronkan timestamp untuk kontrak
-
-        IntentSender.Intent memory intent = IntentSender.Intent({
-            user: user,
-            token: address(0xABC),
-            amount: 1000,
-            sourceChainId: arbitrumSepoliaChainId,
-            destinationChainId: liberichainChainId,
-            deadline: fixedTimestamp - 1, // Intent sudah kedaluwarsa
-            minReceived: 900
-        });
+    function testSubmitIntent_LocksTokens() public {
+        uint256 amount = 100 * 10**18;
+        uint256 originChain = intentSender.ARBITRUM_SEPOLIA_CHAIN_ID();
+        uint32 destinationChain = 1614990;
+        uint256 deadline = block.timestamp + 1 days;
+        uint256 minReceived = 50 * 10**18;
 
         vm.prank(user);
-        vm.expectRevert(IntentSender.IntentExpired.selector);
-        intentSender.submitIntent(intent);
+        bytes32 intentId = intentSender.submitIntent(
+            address(mockToken),
+            amount,
+            originChain,
+            destinationChain,
+            deadline,
+            minReceived
+        );
+
+        assertEq(mockToken.balanceOf(address(intentSender)), amount, "MockToken should be locked in contract");
+        assertEq(intentSender.lockedTokens(intentId), amount, "Locked amount should match the submitted amount");
     }
-    function testSubmitIntentRevertsIfInvalidSourceChain() public {
-        uint32 invalidSourceChainId = 123456; // Invalid source chain ID
-        IntentSender.Intent memory invalidIntent = IntentSender.Intent({
-            user: user,
-            token: token,
-            amount: amount,
-            sourceChainId: invalidSourceChainId,
-            destinationChainId: liberichainChainId,
-            deadline: deadline,
-            minReceived: minReceived
-        });
 
-        // Expect the InvalidSourceChain revert
-        vm.expectRevert(IntentSender.InvalidSourceChain.selector);
+    function testSubmitIntent_RevertsOnExpiredDeadline() public {
+        uint256 amount = 100 * 10**18;
+        uint256 originChain = intentSender.ARBITRUM_SEPOLIA_CHAIN_ID();
+        uint32 destinationChain = 1614990;
+        uint256 deadline = block.timestamp - 1;
+        uint256 minReceived = 50 * 10**18;
 
-        // Call submitIntent with invalid source chain ID
-        intentSender.submitIntent(invalidIntent);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IntentSender.IntentExpired.selector));
+        intentSender.submitIntent(
+            address(mockToken),
+            amount,
+            originChain,
+            destinationChain,
+            deadline,
+            minReceived
+        );
+    }
+
+    function testSubmitIntent_RevertsOnZeroMinReceived() public {
+        uint256 amount = 100 * 10**18;
+        uint256 originChain = intentSender.ARBITRUM_SEPOLIA_CHAIN_ID();
+        uint32 destinationChain = 1614990;
+        uint256 deadline = block.timestamp + 1 days;
+
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IntentSender.InvalidMinReceived.selector));
+        intentSender.submitIntent(
+            address(mockToken),
+            amount,
+            originChain,
+            destinationChain,
+            deadline,
+            0
+        );
     }
 }
