@@ -68,18 +68,18 @@ sequenceDiagram
 
 ## 🛠️ Setup
 1. Configure `.env`:
-   ```ini
-  SOURCE_CHAIN_RPC_URL = 
-  DEST_CHAIN_RPC_URL = 
-  SOLVER_PRIVATE_KEY = 
-  INTENT_SENDER_CONTRACT_ADDRESS =
-  USER_PRIVATE_KEY = 
-  USER_ADDRESS =
-  SOURCE_TOKEN_ADDRESS =
-  DESTINATION_TOKEN_ADDRESS =
+   ```
+      SOURCE_CHAIN_RPC_URL = 
+      DEST_CHAIN_RPC_URL = 
+      SOLVER_PRIVATE_KEY = 
+      INTENT_SENDER_CONTRACT_ADDRESS =
+      USER_PRIVATE_KEY = 
+      USER_ADDRESS =
+      SOURCE_TOKEN_ADDRESS =
+      DESTINATION_TOKEN_ADDRESS =
    ```
 2. Run:
-   ```bash
+   ```
    yarn install
    yarn ts-node src/solver.ts
    yarn ts-node src/transaction.ts
