@@ -1,66 +1,104 @@
-## Foundry
+## ⚠️ Important Package Manager Notice
+**Important:** We no longer support the use of Yarn for smart contract development.
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+```markdown
+# Open Intent Smart Contracts 🔗
 
-Foundry consists of:
+[![Foundry][foundry-badge]][foundry]
+[![License: MIT][license-badge]][license]
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Smart contracts implementing Open Intent protocol for cross-chain transactions, built with Foundry.
 
-## Documentation
+## 📜 Contracts
 
-https://book.getfoundry.sh/
+### Core Contracts
+- `IntentSender.sol`: Entry point for users to submit intents
 
-## Usage
+## 🛠️ Development
+
+### Prerequisites
+- [Foundry](https://getfoundry.sh)
+- Node.js ≥ 18
+- [Hyperlane](https://www.hyperlane.xyz/) configured chains
+
+### Setup
+```bash
+git clone https://github.com/novaria-defi/liberichain-open-intents.git
+cd intent-contract
+forge install
+```
 
 ### Build
-
-```shell
-$ forge build
+```bash
+forge build
 ```
 
 ### Test
-
-```shell
-$ forge test
+```bash
+forge test -vvv # Run tests with verbose output
 ```
 
-### Format
-
-```shell
-$ forge fmt
+### Environment Setup
+Create `.env` file:
+```ini
+PRIVATE_KEY=0x...
 ```
 
-### Gas Snapshots
+## 📊 Deployment
 
-```shell
-$ forge snapshot
+### Deploy to Arbitrum Sepolia
+```bash
+forge script script/Deploy.s.sol:DeployScript \
+--rpc-url $RPC_URL_ARBITRUM \
+--private-key $PRIVATE_KEY \
+--broadcast \
+--verify \
+--etherscan-api-key $ARBISCAN_KEY \
+-s "run()"
 ```
 
-### Anvil
-
-```shell
-$ anvil
+### Verify Contracts
+```bash
+forge verify-contract \
+--chain-id 42161 \
+--constructor-args $(cast abi-encode "constructor()" "") \
+--etherscan-api-key $ARBISCAN_KEY \
+<CONTRACT_ADDRESS> \
+src/IntentSender.sol:IntentSender
 ```
 
-### Deploy
+## 🌉 Cross-Chain Workflow
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+1. **User Submission**:
+   ```solidity
+   // Submit intent to send 100 USDC from Arbitrum to Liberichain
+   IntentSender.submitIntent(
+       destChainId: 1614990, // Liberichain
+       token: 0xA0b869... // USDC
+       amount: 100e6,
+       minOut: 99e6
+   );
+   ```
+
+## 📚 Documentation
+
+- [Foundry Book](https://book.getfoundry.sh)
+- [Hyperlane Docs](https://docs.hyperlane.xyz)
+- [Open Intent Spec](./docs/SPEC.md)
+- [Liberichain](https://github.com/novaria-defi/liberichain-open-intents?tab=readme-ov-file#liberichain-open-intents)
+
+## ⚠️ Security
+
+```bash
+# Run slither analysis
+slither . --config-file slither.config.json
 ```
 
-### Cast
+## 📄 License
+MIT
 
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+[foundry]: https://getfoundry.sh
+[foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
+[license]: https://opensource.org/licenses/MIT
+[license-badge]: https://img.shields.io/badge/License-MIT-blue.svg
 ```

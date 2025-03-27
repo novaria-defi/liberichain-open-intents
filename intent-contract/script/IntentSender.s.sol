@@ -21,4 +21,4 @@ contract IntentSenderScript is Script {
         vm.stopBroadcast();
     }
 }
-// forge script IntentSenderScript --rpc-url https://arb-sepolia.g.alchemy.com/v2/czzNRTsjnAUcR9rlDQn3zCjhkd-IT8mo --broadcast --verify --etherscan-api-key EG19M428F61ZVNVJFFEQDNDRAKBGAF45RP
+/

@@ -15,7 +15,6 @@ contract IntentSenderTest is Test {
         mockToken = new MockERC20();
         intentSender = new IntentSender(settlementContract);
 
-        // Mint tokens to user and approve IntentSender
         mockToken.mint(user, 1000 * 10**18);
         vm.prank(user);
         mockToken.approve(address(intentSender), 1000 * 10**18);
