@@ -1,34 +1,34 @@
 ```markdown
 # Liberichain Solver (Cross-Chain Open Intents)
 
-Minimal solver for Liberichain’s Open Intents system, supporting cross-chain swaps via Hyperlane and settlement on Arbitrum Nitro & Espresso Systems.
+Minimal solver for Liberichain’s Open Intents system, supporting cross-chain swaps via Hyperlane on Arbitrum Nitro & Espresso Systems.
 
 ## 📂 Folder Structure
 ```
 solver/
-├── abis/
+├── contract/
 │   ├── ERC20.json
 │   ├── IntentSender.json       # For cross-chain intent submission
-│   └── IntentSettlement.json   # For final settlement
 ├── src/
 │   ├── config.ts              # Chain configurations
 │   ├── index.ts               # Main solver logic
 │   └── types.ts
 ├── .env.example
 └── package.json
-```
-
 ## 🌉 Cross-Chain Workflow
+
 1. **User Submits Intent**  
-   - Calls `IntentSender.sendIntent()` on source chain (e.g., Arbitrum Sepolia).
+   - Calls `IntentSender.sendIntent()` on the source chain (e.g., Arbitrum Sepolia).
+
 2. **Solver Monitors**  
-   - Polls `IntentSender` contract every second for new intents.
+   - Polls the `IntentSender` contract every second for new intents.
+
 3. **Token Bridging**  
-   - Solver sends equivalent tokens to user on destination chain via Hyperlane-wrapped assets.
+   - Solver sends equivalent tokens to the user on the destination chain via Hyperlane-wrapped assets.
+
 4. **User Receives Funds**  
-   - Tokens arrive on destination chain (gas paid by solver).
-5. **Settlement**  
-   - Solver calls `IntentSettlement.settle()` on destination chain to finalize net balances.
+   - Tokens arrive on the destination chain (gas paid by the solver).
+
 
 ```mermaid
 sequenceDiagram
@@ -38,7 +38,6 @@ sequenceDiagram
     end
     Solver->>DestinationChain: sendTokens(user, amount)
     User->>DestinationChain: receives tokens
-    Solver->>IntentSettlement: settleNetTransactions()
 ```
 
 ## ⚙️ Pre-Requirements
