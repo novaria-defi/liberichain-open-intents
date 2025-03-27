@@ -1,16 +1,16 @@
 # Liberichain Open Intents Integration  
 
 **A gasless intent-based transaction system integrated with Arbitrum (Nitro) Sepolia and Espresso Systems**  
-
-##  ██╗     ██╗██████╗ ███████╗██████╗ ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
-##  ██║     ██║██╔══██╗██╔════╝██╔══██╗██║██╔════╝██║  ██║██╔══██╗██║████╗  ██║
-##  ██║     ██║██████╔╝█████╗  ██████╔╝██║██║     ███████║███████║██║██╔██╗ ██║
-##  ██║     ██║██╔══██╗██╔══╝  ██╔══██╗██║██║     ██╔══██║██╔══██║██║██║╚██╗██║
-##  ███████╗██║███████║███████╗██║  ██║██║╚██████╗██║  ██║██║  ██║██║██║ ╚████║
-##  ╚══════╝╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
-##  
-##  Decentralized Intent-Based Cross-Chain Protocol
-
+```
+  ██╗     ██╗██████╗ ███████╗██████╗ ██╗ ██████╗██╗  ██╗ █████╗ ██╗███╗   ██╗
+  ██║     ██║██╔══██╗██╔════╝██╔══██╗██║██╔════╝██║  ██║██╔══██╗██║████╗  ██║
+  ██║     ██║██████╔╝█████╗  ██████╔╝██║██║     ███████║███████║██║██╔██╗ ██║
+  ██║     ██║██╔══██╗██╔══╝  ██╔══██╗██║██║     ██╔══██║██╔══██║██║██║╚██╗██║
+  ███████╗██║███████║███████╗██║  ██║██║╚██████╗██║  ██║██║  ██║██║██║ ╚████║
+  ╚══════╝╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
+  
+  Decentralized Intent-Based Cross-Chain Protocol
+```
 ## Overview  
 
 Liberichain Open Intents is a framework that enables users to submit **gasless, intent-driven transactions** (e.g., transfers, cross-chain actions) without directly paying gas fees. Instead, **solvers** (relayers or third-party executors) fulfill these intents on supported chains, including:  
